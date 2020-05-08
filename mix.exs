@@ -4,7 +4,7 @@ defmodule Vera.MixProject do
   def project do
     [
       app: :vera,
-      version: "0.1.0",
+      version: "0.0.2",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -23,6 +23,7 @@ defmodule Vera.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:scribe, "~> 0.10"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
