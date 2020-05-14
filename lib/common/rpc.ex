@@ -4,9 +4,9 @@ defmodule RPC do
   """
 
   @doc """
-    Retrieve the configured RPC host from the Application environment.
+    Retrieves the RPC host configured in the Application environment.
 
-    Raised RuntimeError if the key :rpc_host is not present in the environment.
+    Raises RuntimeError if the key :rpc_host is not present in the environment.
 
     ## Examples
 

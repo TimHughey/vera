@@ -34,9 +34,13 @@ defmodule Roost do
   end
 
   def shutdown do
-    roost = pulse_width([:like, "roost "])
+    off_list =
+      [
+        "roost lights sound one",
+        "roost lights sound three"
+      ] ++ pulse_width([:like, "roost el wire"])
 
-    for r <- roost, do: pulse_width([:off, r])
+    for r <- off_list, do: pulse_width([:off, r])
   end
 
   defp pulse_width(args) do

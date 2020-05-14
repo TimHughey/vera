@@ -1,24 +1,28 @@
 defmodule Reef do
-  @moduledoc false
+  @moduledoc """
+  Reef System Maintenance Command Line Interface
+  """
 
   import RPC, only: [host: 0]
 
   import IO.ANSI
 
-  # def help do
-  #   IO.puts(clear())
-  #   IO.puts(yellow() <> underline() <> "Reef Control CLI" <> reset())
-  #   IO.puts(" ")
-  #
-  #   [
-  #     %{cmd: "dcs_standby()", desc: "set Dutycycle to standby"},
-  #     %{cmd: "ths_standby()", desc: "set Thermostat to standby"},
-  #     %{cmd: "mix_air(profile)", desc: "set mix air profile"}
-  #   ]
-  #   |> Scribe.print(style: Scribe.Style.NoBorder)
-  #   |> IO.puts()
-  # end
+  @doc """
+    Set system for adding salt to the SWMT (salt water mix tank).
 
+      ## Dutycycle and Thermostats
+
+        The Dutycycles and Thermostats are set to the following modes:
+
+        Name          | Mode           | Type
+        ------------- |--------------- --------------
+         mix pump     |  add salt      |  Dutycycle
+         mix air      |  add salt      |  Dutycycle
+         rodi fill    |  __halted__    |  Dutycycle
+         mix heat     |  standby       |  Thermostat
+         display tank |  __unchanged__ |  Thermostat
+
+  """
   def add_salt do
     profile_name = "add_salt"
     rmp() |> dc_activate_profile(profile_name)
@@ -27,6 +31,17 @@ defmodule Reef do
     swmt() |> ths_activate(standby())
   end
 
+  @doc """
+    Set the Dutycycle profile for mix air.
+
+    Returns a list of the settings for the `mix air` Dutycycle.
+
+      ## Examples
+
+        iex> Reef.air("keep fresh")
+        [name: "mix air", active_profile: "keep fresh", active: true]
+
+  """
   def air(profile) when is_binary(profile),
     do: dc_activate_profile(rma(), profile)
 
@@ -286,7 +301,7 @@ defmodule Reef do
     }
   end
 
-  def th_status(name, opts) do
+  def th_status(name, _opts) do
     with active_profile when is_struct(active_profile) <-
            :rpc.call(host(), Thermostat.Server, :profiles, [name, [active: true]]) do
       %{
