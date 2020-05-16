@@ -33,7 +33,24 @@ defmodule Roost do
     :ok
   end
 
-  def shutdown do
+  def closing do
+    off_list = [
+      "roost lights sound one",
+      "roost lights sound three",
+      "roost el wire"
+    ]
+
+    for r <- off_list, do: pulse_width([:off, r])
+
+    pulse_width([:duty, "roost led forest", [duty: 4096]])
+
+    Task.async(fn ->
+      Process.sleep(15 * 60 * 1000)
+      closed()
+    end)
+  end
+
+  def closed do
     off_list =
       [
         "roost lights sound one",
@@ -41,6 +58,8 @@ defmodule Roost do
       ] ++ pulse_width([:like, "roost el wire"])
 
     for r <- off_list, do: pulse_width([:off, r])
+
+    pulse_width([:duty, "roost led forest", [duty: 128]])
   end
 
   defp pulse_width(args) do

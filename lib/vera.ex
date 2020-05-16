@@ -12,11 +12,5 @@ defmodule Vera do
       :world
 
   """
-  def roost(:engage) do
-    Roost.engage()
-  end
-
-  def roost(:shutdown) do
-    Roost.shutdown()
-  end
+  def hello, do: :world
 end
