@@ -24,9 +24,9 @@ defmodule Reef do
 
   """
   def add_salt do
-    profile_name = "add_salt"
+    profile_name = "add salt"
     rmp() |> dc_activate_profile(profile_name)
-    rma() |> dc_activate_profile(profile_name)
+    rma() |> dc_halt()
     rmrf() |> dc_halt()
     swmt() |> ths_activate(standby())
   end
