@@ -33,19 +33,26 @@ defmodule Roost do
     :ok
   end
 
-  def closing do
+  def closing(sleep_opts \\ [minutes: 15]) when is_list(sleep_opts) do
+    import TimeSupport, only: [duration_ms: 1]
+
     off_list = [
       "roost lights sound one",
       "roost lights sound three",
-      "roost el wire"
+      "roost el wire",
+      "roost disco ball"
     ]
 
     for r <- off_list, do: pulse_width([:off, r])
 
     pulse_width([:duty, "roost led forest", [duty: 4096]])
 
+    front_leds = pulse_width([:like, "front"])
+
+    for f <- front_leds, do: pulse_width([:duty, f, [duty: 200]])
+
     Task.async(fn ->
-      Process.sleep(15 * 60 * 1000)
+      Process.sleep(duration_ms(sleep_opts))
       closed()
     end)
   end
