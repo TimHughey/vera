@@ -10,13 +10,8 @@ defmodule Roost do
   end
 
   def engage do
-    on_list = [
-      "roost lights sound one",
-      "roost lights sound three",
-      "roost el wire entry"
-    ]
-
-    for l <- on_list, do: pulse_width([:on, l])
+    pulse_width([:duty_names_begin_with, "roost lights", [duty: 8191]])
+    pulse_width([:duty_names_begin_with, "roost el wire entry", [duty: 8191]])
 
     pulse_width([:duty, "roost el wire", [duty: 4096]])
 
@@ -36,20 +31,14 @@ defmodule Roost do
   def closing(sleep_opts \\ [minutes: 15]) when is_list(sleep_opts) do
     import TimeSupport, only: [duration_ms: 1]
 
-    off_list = [
-      "roost lights sound one",
-      "roost lights sound three",
-      "roost el wire",
-      "roost disco ball"
-    ]
+    pulse_width([:duty_names_begin_with, "roost lights", [duty: 0]])
+    pulse_width([:off, "roost el wire"])
+    pulse_width([:off, "roost disco ball"])
 
-    for r <- off_list, do: pulse_width([:off, r])
+    pulse_width([:duty, "roost led forest", [duty: 8191]])
+    pulse_width([:duty, "roost el wire entry", [duty: 8191]])
 
-    pulse_width([:duty, "roost led forest", [duty: 4096]])
-
-    front_leds = pulse_width([:like, "front"])
-
-    for f <- front_leds, do: pulse_width([:duty, f, [duty: 200]])
+    pulse_width([:duty_names_begin_with, "front", [duty: 0.03]])
 
     Task.async(fn ->
       Process.sleep(duration_ms(sleep_opts))
@@ -58,15 +47,12 @@ defmodule Roost do
   end
 
   def closed do
-    off_list =
-      [
-        "roost lights sound one",
-        "roost lights sound three"
-      ] ++ pulse_width([:like, "roost el wire"])
+    pulse_width([:off, "roost disco ball"])
+    pulse_width([:duty_names_begin_with, "roost lights", [duty: 0]])
+    pulse_width([:duty_names_begin_with, "roost el wire", [duty: 0]])
 
-    for r <- off_list, do: pulse_width([:off, r])
-
-    pulse_width([:duty, "roost led forest", [duty: 128]])
+    pulse_width([:duty, "roost led forest", [duty: 0.02]])
+    pulse_width([:duty_names_begin_with, "front", [duty: 0.03]])
   end
 
   defp pulse_width(args) do
