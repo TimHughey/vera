@@ -53,11 +53,46 @@ defmodule Reef do
   def air_resume,
     do: dc_resume(rma())
 
-  def clean(start \\ true) do
-    if start do
-      halt_ato()
-    else
-      resume_ato()
+  def clean(mode \\ :toggle) do
+    # NOTE:
+    #  display tank ato is normally on and when the profile "off" is
+    #  active then ato is stopped.  so, we must invert active
+
+    %{status: _status, active: active} = dc_status("display tank ato")
+
+    cond do
+      mode == :toggle and active == true ->
+        ["\nclean mode DISENGAGED\n"] |> IO.puts()
+        resume_ato()
+        :ok
+
+      mode == :toggle and active == false ->
+        ["\nclean mode ENGAGED\n"] |> IO.puts() |> IO.puts()
+        halt_ato()
+        :ok
+
+      mode == :yes ->
+        ["\nclean mode forced to ENGAGED\n"] |> IO.puts()
+        halt_ato()
+        :ok
+
+      mode == :no ->
+        ["\nclean mode forced to DISENGAGED\n"] |> IO.puts()
+        resume_ato()
+        :ok
+
+      mode ->
+        [
+          "\n",
+          "Reef.clean/1: \n",
+          " :toggle - toogle clean mode (default)\n",
+          " :yes    - engage clean mode\n",
+          " :no     - disengage clean mode\n",
+          "\n"
+        ]
+        |> IO.puts()
+
+        :ok
     end
   end
 
