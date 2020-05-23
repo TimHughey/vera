@@ -87,8 +87,7 @@ defmodule Reef do
           "Reef.clean/1: \n",
           " :toggle - toogle clean mode (default)\n",
           " :yes    - engage clean mode\n",
-          " :no     - disengage clean mode\n",
-          "\n"
+          " :no     - disengage clean mode\n"
         ]
         |> IO.puts()
 
