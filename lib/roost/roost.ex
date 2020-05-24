@@ -14,6 +14,7 @@ defmodule Roost do
     pulse_width([:duty_names_begin_with, "roost el wire entry", [duty: 8191]])
 
     pulse_width([:duty, "roost el wire", [duty: 4096]])
+    pulse_width([:duty, "roost led forest", [duty: 200]])
 
     IO.write("spinning up disco ball.")
     pulse_width([:duty, "roost disco ball", [duty: 5000]])
