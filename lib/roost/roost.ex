@@ -1,6 +1,8 @@
 defmodule Roost do
   @moduledoc false
 
+  @compile {:no_warn_undefined, PulseWidth}
+
   alias PulseWidth
   use Timex
 
@@ -25,7 +27,7 @@ defmodule Roost do
     :ok
   end
 
-  def closing(sleep_opts \\ [minutes: 15]) when is_list(sleep_opts) do
+  def closing(sleep_opts \\ [minutes: 5]) when is_list(sleep_opts) do
     PulseWidth.duty_names_begin_with("roost lights", duty: 0)
     PulseWidth.off("roost el wire")
     PulseWidth.off("roost disco ball")

@@ -3,6 +3,10 @@ defmodule Reef do
   Reef System Maintenance Command Line Interface
   """
 
+  @compile {:no_warn_undefined, Dutycycle.Server}
+  @compile {:no_warn_undefined, Thermostat.Server}
+  @compile {:no_warn_undefined, SensorOld}
+
   import IO.ANSI
 
   @doc """
@@ -204,9 +208,9 @@ defmodule Reef do
     allowed_diff = Keyword.get(opts, :allowed_diff, 0.8)
     interactive = Keyword.get(opts, :interactive, true)
 
-    mixtank_temp = Sensor.fahrenheit(name: "mixtank", since_secs: 30)
+    mixtank_temp = SensorOld.fahrenheit(name: "mixtank", since_secs: 30)
 
-    display_temp = Sensor.fahrenhei(name: "display_tank", since_secs: 30)
+    display_temp = SensorOld.fahrenhei(name: "display_tank", since_secs: 30)
 
     temp_diff = abs(mixtank_temp - display_temp)
 
@@ -310,7 +314,7 @@ defmodule Reef do
 
   defp sensor_status(name) do
     temp_format = fn sensor ->
-      temp = Sensor.fahrenheit(name: sensor, since_secs: 30)
+      temp = SensorOld.fahrenheit(name: sensor, since_secs: 30)
 
       if is_nil(temp) do
         temp
