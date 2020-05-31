@@ -1,23 +1,19 @@
 defmodule Roost do
   @moduledoc false
 
-  def args_test(args) do
-    {func, args} = List.pop_at(args, 0)
+  alias PulseWidth
+  use Timex
 
-    combined = [func, args]
+  def boot do
+    PulseWidth.duty_names_begin_with("roost lights", duty: 8191)
+    PulseWidth.duty_names_begin_with("roost el wire entry", duty: 8191)
 
-    inspect(combined, pretty: true) |> IO.puts()
-  end
-
-  def engage do
-    pulse_width([:duty_names_begin_with, "roost lights", [duty: 8191]])
-    pulse_width([:duty_names_begin_with, "roost el wire entry", [duty: 8191]])
-
-    pulse_width([:duty, "roost el wire", [duty: 4096]])
-    pulse_width([:duty, "roost led forest", [duty: 200]])
+    PulseWidth.duty("roost el wire", duty: 4096)
+    PulseWidth.duty("roost led forest", duty: 200)
 
     IO.write("spinning up disco ball.")
-    pulse_width([:duty, "roost disco ball", [duty: 5000]])
+    PulseWidth.duty("roost")
+    PulseWidth.duty("roost disco ball", duty: 5000)
 
     for _i <- 1..10 do
       Process.sleep(500)
@@ -25,49 +21,60 @@ defmodule Roost do
     end
 
     IO.puts(" done.")
-    pulse_width([:duty, "roost disco ball", [duty: 4500]])
+    PulseWidth.duty("roost disco ball", duty: 4500)
     :ok
   end
 
   def closing(sleep_opts \\ [minutes: 15]) when is_list(sleep_opts) do
-    import TimeSupport, only: [duration_ms: 1]
+    PulseWidth.duty_names_begin_with("roost lights", duty: 0)
+    PulseWidth.off("roost el wire")
+    PulseWidth.off("roost disco ball")
 
-    pulse_width([:duty_names_begin_with, "roost lights", [duty: 0]])
-    pulse_width([:off, "roost el wire"])
-    pulse_width([:off, "roost disco ball"])
+    PulseWidth.duty("roost led forest", duty: 8191)
+    PulseWidth.duty("roost el wire entry", duty: 8191)
 
-    pulse_width([:duty, "roost led forest", [duty: 8191]])
-    pulse_width([:duty, "roost el wire entry", [duty: 8191]])
-
-    pulse_width([:duty_names_begin_with, "front", [duty: 0.03]])
+    PulseWidth.duty_names_begin_with("front", duty: 0.03)
 
     Task.async(fn ->
-      Process.sleep(duration_ms(sleep_opts))
-      closed()
+      duration_ms(sleep_opts)
+      |> Process.sleep()
+
+      shutdown()
     end)
   end
 
-  def closed do
-    pulse_width([:off, "roost disco ball"])
-    pulse_width([:duty_names_begin_with, "roost lights", [duty: 0]])
-    pulse_width([:duty_names_begin_with, "roost el wire", [duty: 0]])
+  def shutdown do
+    PulseWidth.off("roost disco ball")
+    PulseWidth.duty_names_begin_with("roost lights", duty: 0)
+    PulseWidth.duty_names_begin_with("roost el wire", duty: 0)
 
-    pulse_width([:duty, "roost led forest", [duty: 0.02]])
-    pulse_width([:duty_names_begin_with, "front", [duty: 0.03]])
+    PulseWidth.duty("roost led forest", duty: 0.02)
+    PulseWidth.duty_names_begin_with("front", duty: 0.03)
   end
 
-  defp pulse_width(args) do
-    {func, args} = List.pop_at(args, 0)
-
-    host = rpc_host()
-
-    if is_nil(host) do
-      IO.puts("missing rpc host")
-      {:missing_rpc_host}
-    else
-      :rpc.call(host, PulseWidth, func, args)
-    end
+  def duration(opts) when is_list(opts) do
+    # after hours of searching and not finding an existing capabiility
+    # in Timex we'll roll our own consisting of multiple Timex functions.
+    ~U[0000-01-01 00:00:00Z]
+    |> Timex.shift(Keyword.take(opts, valid_duration_opts()))
+    |> Timex.to_gregorian_microseconds()
+    |> Duration.from_microseconds()
   end
 
-  defp rpc_host, do: Application.get_env(:vera, :rpc_host)
+  def duration(_anything), do: 0
+
+  defp duration_ms(opts) when is_list(opts),
+    do: duration(opts) |> Duration.to_milliseconds(truncate: true)
+
+  defp valid_duration_opts,
+    do: [
+      :microseconds,
+      :seconds,
+      :minutes,
+      :hours,
+      :days,
+      :weeks,
+      :months,
+      :years
+    ]
 end

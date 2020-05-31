@@ -3,8 +3,6 @@ defmodule Reef do
   Reef System Maintenance Command Line Interface
   """
 
-  import RPC, only: [host: 0]
-
   import IO.ANSI
 
   @doc """
@@ -181,11 +179,11 @@ defmodule Reef do
 
   def ths_activate(th, profile)
       when is_binary(th) and is_binary(profile) do
-    :rpc.call(host(), Thermostat.Server, :activate_profile, [th, profile])
+    Thermostat.Server.activate_profile(th, profile)
   end
 
   def ths_standby(th) when is_binary(th) do
-    :rpc.call(host(), Thermostat.Server, :standby, [th])
+    Thermostat.Server.standby(th)
   end
 
   def utility_pump(p) when is_binary(p),
@@ -206,10 +204,9 @@ defmodule Reef do
     allowed_diff = Keyword.get(opts, :allowed_diff, 0.8)
     interactive = Keyword.get(opts, :interactive, true)
 
-    mixtank_temp = :rpc.call(host(), Sensor, :fahrenheit, [[name: "mixtank", since_secs: 30]])
+    mixtank_temp = Sensor.fahrenheit(name: "mixtank", since_secs: 30)
 
-    display_temp =
-      :rpc.call(host(), Sensor, :fahrenheit, [[name: "display_tank", since_secs: 30]])
+    display_temp = Sensor.fahrenhei(name: "display_tank", since_secs: 30)
 
     temp_diff = abs(mixtank_temp - display_temp)
 
@@ -276,7 +273,7 @@ defmodule Reef do
 
   def dc_activate_profile(name, p) do
     with {:ok, status} when is_list(status) <-
-           :rpc.call(host(), Dutycycle.Server, :activate_profile, [name, p]) do
+           Dutycycle.Server.activate_profile(name, p) do
       status
     else
       error -> ["error: ", inspect(error, pretty: true)] |> IO.puts()
@@ -285,7 +282,7 @@ defmodule Reef do
 
   def dc_halt(name) do
     with {:ok, status} when is_list(status) <-
-           :rpc.call(host(), Dutycycle.Server, :halt, [name]) do
+           Dutycycle.Server.halt(name) do
       status
     else
       error -> ["error: ", inspect(error, pretty: true)] |> IO.puts()
@@ -294,7 +291,7 @@ defmodule Reef do
 
   def dc_resume(name) do
     with {:ok, status} when is_list(status) <-
-           :rpc.call(host(), Dutycycle.Server, :resume, [name]) do
+           Dutycycle.Server.resume(name) do
       status
     else
       error -> inspect(error, pretty: true) |> IO.puts()
@@ -302,24 +299,18 @@ defmodule Reef do
   end
 
   def dc_status(name, opts \\ [active: true]) do
-    # with {:ok, dc} <- :rpc.call(host(), Dutycycle.Server, :profiles, [name, opts]) do
-    #   Map.get(dc, :name) |> dc_status()
-    # else
-    #   error -> inspect(error, pretty: true) |> IO.puts()
-    # end
-
-    profile = :rpc.call(host(), Dutycycle.Server, :profiles, [name, opts])
+    profile = Dutycycle.Server.profiles(name, opts)
 
     %{
       subsystem: name,
       status: profile |> Map.get(:name),
-      active: :rpc.call(host(), Dutycycle.Server, :active?, [name])
+      active: Dutycycle.Server.active?(name)
     }
   end
 
   defp sensor_status(name) do
     temp_format = fn sensor ->
-      temp = :rpc.call(host(), Sensor, :fahrenheit, [[name: sensor, since_secs: 30]])
+      temp = Sensor.fahrenheit(name: sensor, since_secs: 30)
 
       if is_nil(temp) do
         temp
@@ -337,7 +328,7 @@ defmodule Reef do
 
   def th_status(name, _opts) do
     with active_profile when is_struct(active_profile) <-
-           :rpc.call(host(), Thermostat.Server, :profiles, [name, [active: true]]) do
+           Thermostat.Server.profiles(name, active: true) do
       %{
         subsystem: name,
         status: active_profile |> Map.get(:name),

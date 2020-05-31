@@ -16,4 +16,4 @@ config :logger,
 
 config :scribe, style: Scribe.Style.GithubMarkdown
 
-# import_config "#{Mix.env()}.exs"
+import_config "#{Mix.env()}.exs"
