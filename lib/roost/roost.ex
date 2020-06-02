@@ -6,7 +6,7 @@ defmodule Roost do
   alias PulseWidth
   use Timex
 
-  def boot do
+  def open do
     PulseWidth.duty_names_begin_with("roost lights", duty: 8191)
     PulseWidth.duty_names_begin_with("roost el wire entry", duty: 8191)
 
@@ -54,7 +54,7 @@ defmodule Roost do
     PulseWidth.duty_names_begin_with("front", duty: 0.03)
   end
 
-  def duration(opts) when is_list(opts) do
+  defp duration(opts) when is_list(opts) do
     # after hours of searching and not finding an existing capabiility
     # in Timex we'll roll our own consisting of multiple Timex functions.
     ~U[0000-01-01 00:00:00Z]
@@ -63,7 +63,7 @@ defmodule Roost do
     |> Duration.from_microseconds()
   end
 
-  def duration(_anything), do: 0
+  defp duration(_anything), do: 0
 
   defp duration_ms(opts) when is_list(opts),
     do: duration(opts) |> Duration.to_milliseconds(truncate: true)
