@@ -4,7 +4,7 @@ defmodule Vera.MixProject do
   def project do
     [
       app: :vera,
-      version: "0.0.6",
+      version: "0.0.7",
       elixir: "~> 1.10",
       elixirc_options: [no_warn_undefined: [TimeSupport, Switch]],
       start_permanent: Mix.env() == :prod,
