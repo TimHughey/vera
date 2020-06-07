@@ -5,6 +5,8 @@ defmodule Irrigation do
 
   require Logger
 
+  @on_load :init
+
   def front_porch(sw_name \\ "irrigation front porch", opts \\ [seconds: 30])
       when is_binary(sw_name) and is_list(opts) do
     duration_ms = TimeSupport.duration_ms(opts)
@@ -24,16 +26,16 @@ defmodule Irrigation do
         |> IO.iodata_to_binary()
         |> Logger.info()
 
-        # NOTE:  current relays are low activated!
-        Switch.position(sw_name, position: false)
+        Switch.on(sw_name)
 
         Process.sleep(duration_ms)
 
-        Switch.position(sw_name, position: true)
+        Switch.toggle(sw_name)
 
         power(:off)
 
-        Process.sleep(500)
+        # time for switch commands to be acked
+        Process.sleep(1000)
 
         [
           "completed \"",
@@ -50,19 +52,24 @@ defmodule Irrigation do
     task
   end
 
+  def init do
+    for n <- Switch.alias_names_begin_with("irrigation"), do: Switch.off(n)
+
+    :ok
+  end
+
   def power(atom \\ :toggle) when atom in [:on, :off, :toggle, :as_binary] do
     sw = "irrigation 12v power"
 
     case atom do
       :on ->
-        Switch.position(sw, position: true)
+        Switch.on(sw)
 
       :off ->
-        Switch.position(sw, position: false)
+        Switch.off(sw)
 
       :toggle ->
-        curr_pos = Switch.position(sw)
-        Switch.position(sw, position: not curr_pos)
+        Switch.toggle(sw)
 
       :as_binary ->
         inspect(Switch.position(sw))
