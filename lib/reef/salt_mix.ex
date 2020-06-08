@@ -24,10 +24,10 @@ defmodule Reef.SaltMix do
 
   defp fill_part1(%{fill_one_start: started, fill: fill_duration} = control) do
     duration_ms = TimeSupport.duration_ms(fill_duration)
-    elapsed_ms = Duration.elapsed(started, :milliseconds)
+    elapsed_ms = Duration.elapsed(started) |> Duration.to_milliseconds()
 
     # update the cycle count
-    control = %{cycles: cycles} = Map.update(control, :cycles, 1, fn x -> x + 1 end)
+    %{cycles: cycles} = control = Map.update(control, :cycles, 1, fn x -> x + 1 end)
 
     ["fill part1 starting cycle ", Integer.to_string(cycles)] |> IO.puts()
 
@@ -71,14 +71,20 @@ defmodule Reef.SaltMix do
     base = %{fill_one_start: now(), all_opts: opts}
     control_map = Map.merge(base, Enum.into(opts, %{}))
 
+    [inspect(control_map, pretty: true)] |> IO.puts()
+
     # convert the :fill and :final opts to durations
-    for {key, val} when key in ["fill", "final"] <- control_map, into: %{} do
-      {key, TimeSupport.duration(val)}
+    for {key, val} <- control_map, into: %{} do
+      case key do
+        :fill -> {key, TimeSupport.duration(val)}
+        :final -> {key, TimeSupport.duration(val)}
+        key -> {key, val}
+      end
     end
     |> validate.()
   end
 
-  defp now, do: Duration.now(:milliseconds)
+  defp now, do: Duration.now()
 
   defp rodi_valve(sw_name \\ "reefmix_rodi_valve", pos)
        when is_binary(sw_name) and pos in [:open, :closed] do
@@ -89,25 +95,25 @@ defmodule Reef.SaltMix do
   end
 
   defp water_add(sw_name \\ "reefmix_rodi_valve", opts \\ [minutes: 2, seconds: 48]) do
-    duration = TimeSupport.duration(opts)
+    ms = TimeSupport.duration_ms(opts)
 
     # open the valve to the salt water mix tank
     rodi_valve(sw_name, :open)
 
     # allow time to pass
-    Process.sleep(TimeSupport.duration_ms(duration))
+    Process.sleep(ms)
 
     # close the valve to the salt water mix tank
     rodi_valve(:closed)
   end
 
   defp water_recharge(sw_name \\ "reefmix_rodi_valve", opts \\ [minutes: 40]) do
-    duration = TimeSupport.duration(opts)
+    ms = TimeSupport.duration_ms(opts)
 
     # for safety sake, ensure the valve is OFF
     rodi_valve(sw_name, :closed)
 
     # to recharge the rodi tank just let time pass
-    Process.sleep(duration)
+    Process.sleep(ms)
   end
 end
