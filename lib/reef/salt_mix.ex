@@ -15,7 +15,7 @@ defmodule Reef.SaltMix do
 
     task = Task.async(fn -> [fill_part1(control_map), fill_part2(control_map)] end)
 
-    Keeper.put(:reef_fill_salt_mix, task)
+    Keeper.put_key(:reef_fill_salt_mix, task)
   end
 
   ##
