@@ -7,7 +7,22 @@ defmodule Irrigation do
 
   def front_porch(sw_name \\ "irrigation front porch", opts \\ [seconds: 30])
       when is_binary(sw_name) and is_list(opts) do
-    duration_ms = TimeSupport.duration_ms(opts)
+    irrigate(sw_name, opts)
+  end
+
+  def garden_quick(sw_name \\ "irrigation garden", opts \\ [minutes: 1])
+      when is_binary(sw_name) and is_list(opts) do
+    irrigate(sw_name, opts)
+  end
+
+  def garden(sw_name \\ "irrigation garden", opts \\ [minutes: 30])
+      when is_binary(sw_name) and is_list(opts) do
+    irrigate(sw_name, opts)
+  end
+
+  def irrigate(sw_name, opts) when is_binary(sw_name) and is_list(opts) do
+    duration = TimeSupport.duration(opts)
+    ms = TimeSupport.duration_ms(opts)
 
     task =
       Task.start(fn ->
@@ -18,15 +33,14 @@ defmodule Irrigation do
           "starting \"",
           sw_name,
           "\" for ",
-          inspect(duration_ms / 1000),
-          "s"
+          TimeSupport.humanize_duration(duration)
         ]
         |> IO.iodata_to_binary()
         |> Logger.info()
 
         Switch.on(sw_name)
 
-        Process.sleep(duration_ms)
+        Process.sleep(ms)
 
         Switch.toggle(sw_name)
 
