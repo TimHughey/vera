@@ -6,7 +6,7 @@ defmodule Vera.MixProject do
       app: :vera,
       version: "0.0.7",
       elixir: "~> 1.10",
-      elixirc_options: [no_warn_undefined: [TimeSupport, Switch]],
+      elixirc_options: [no_warn_undefined: [Keeper, TimeSupport, Switch]],
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: releases(),
