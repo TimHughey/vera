@@ -5,8 +5,6 @@ defmodule Irrigation do
 
   require Logger
 
-  @on_load :init
-
   def front_porch(sw_name \\ "irrigation front porch", opts \\ [seconds: 30])
       when is_binary(sw_name) and is_list(opts) do
     duration_ms = TimeSupport.duration_ms(opts)
