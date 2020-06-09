@@ -1,19 +1,25 @@
-defmodule Reef.SaltMix do
+defmodule Reef.Salt.Fill do
   @moduledoc """
     Implements the aspects of mixing a batch of salt water
   """
 
   use Timex
+  require Logger
 
   @doc """
     Starts a task to fill the Salt Water Mix Tank
   """
 
   @doc since: "0.0.7"
-  def fill(opts \\ [fill: [hours: 9], final: [hours: 3]]) when is_list(opts) do
+  def fill(opts \\ [fill: [hours: 8], final: [hours: 1]]) when is_list(opts) do
     control_map = make_control_map(opts)
 
-    task = Task.async(fn -> [fill_part1(control_map), fill_part2(control_map)] end)
+    task =
+      Task.async(fn ->
+        rc = [fill_part1(control_map), fill_part2(control_map)]
+
+        Keeper.put_key(:reef_fill_salt_mix, rc)
+      end)
 
     Keeper.put_key(:reef_fill_salt_mix, task)
   end
@@ -24,12 +30,21 @@ defmodule Reef.SaltMix do
 
   defp fill_part1(%{fill_one_start: started, fill: fill_duration} = control) do
     duration_ms = TimeSupport.duration_ms(fill_duration)
-    elapsed_ms = Duration.elapsed(started) |> Duration.to_milliseconds()
+    elapsed = Duration.elapsed(now(), started)
+    elapsed_ms = Duration.to_milliseconds(elapsed)
 
     # update the cycle count
     %{cycles: cycles} = control = Map.update(control, :cycles, 1, fn x -> x + 1 end)
 
-    ["fill part1 starting cycle ", Integer.to_string(cycles)] |> IO.puts()
+    [
+      "salt mix fill starting cycle #",
+      Integer.to_string(cycles),
+      " (elapsed time ",
+      TimeSupport.humanize_duration(elapsed),
+      ")"
+    ]
+    |> IO.iodata_to_binary()
+    |> Logger.info()
 
     case elapsed_ms do
       # we have yet to pass the requesed runtime, do another cycle
@@ -71,8 +86,6 @@ defmodule Reef.SaltMix do
     base = %{fill_one_start: now(), all_opts: opts}
     control_map = Map.merge(base, Enum.into(opts, %{}))
 
-    [inspect(control_map, pretty: true)] |> IO.puts()
-
     # convert the :fill and :final opts to durations
     for {key, val} <- control_map, into: %{} do
       case key do
@@ -92,6 +105,10 @@ defmodule Reef.SaltMix do
       :open -> Switch.on(sw_name)
       :closed -> Switch.off(sw_name)
     end
+
+    Process.sleep(1000)
+
+    Switch.position(sw_name)
   end
 
   defp water_add(sw_name \\ "reefmix_rodi_valve", opts \\ [minutes: 2, seconds: 48]) do
@@ -104,10 +121,10 @@ defmodule Reef.SaltMix do
     Process.sleep(ms)
 
     # close the valve to the salt water mix tank
-    rodi_valve(:closed)
+    rodi_valve(sw_name, :closed)
   end
 
-  defp water_recharge(sw_name \\ "reefmix_rodi_valve", opts \\ [minutes: 40]) do
+  defp water_recharge(sw_name \\ "reefmix_rodi_valve", opts \\ [minutes: 17]) do
     ms = TimeSupport.duration_ms(opts)
 
     # for safety sake, ensure the valve is OFF
