@@ -30,9 +30,9 @@ defmodule Irrigation do
         Process.sleep(5000)
 
         [
-          "starting \"",
+          "\"",
           sw_name,
-          "\" for ",
+          "\" starting for ",
           TimeSupport.humanize_duration(duration)
         ]
         |> IO.iodata_to_binary()
@@ -50,9 +50,9 @@ defmodule Irrigation do
         Process.sleep(1000)
 
         [
-          "completed \"",
+          "\"",
           sw_name,
-          "\" power=",
+          "\" finished power=",
           power(:as_binary),
           " switch=",
           inspect(Switch.position(sw_name))
