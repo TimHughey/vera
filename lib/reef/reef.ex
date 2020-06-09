@@ -55,41 +55,43 @@ defmodule Reef do
   def air_resume,
     do: dc_resume(rma())
 
-  def clean(mode \\ :toggle) do
-    # NOTE:
-    #  display tank ato is normally on and when the profile "off" is
-    #  active then ato is stopped.  so, we must invert active
+  def clean(mode \\ :toggle, sw_name \\ "display tank ato")
+      when is_atom(mode) and mode in [:engage, :disengage, :toggle, :help, :usage] and
+             is_binary(sw_name) do
+    {:ok, pos} = Switch.position(sw_name)
 
-    %{status: _status, active: active} = dc_status("display tank ato")
+    # NOTE:
+    #  display tank ato is wired normally on.  to turn off ATO set the
+    #  switch to on.
 
     cond do
-      mode == :toggle and active == true ->
+      mode == :toggle and pos == true ->
+        Switch.toggle(sw_name)
         ["\nclean mode DISENGAGED\n"] |> IO.puts()
-        resume_ato()
         :ok
 
-      mode == :toggle and active == false ->
+      mode == :toggle and pos == false ->
+        Switch.toggle(sw_name)
         ["\nclean mode ENGAGED\n"] |> IO.puts() |> IO.puts()
-        halt_ato()
         :ok
 
-      mode == :yes ->
+      mode == :engage ->
+        Switch.on(sw_name, lazy: false)
         ["\nclean mode forced to ENGAGED\n"] |> IO.puts()
-        halt_ato()
         :ok
 
-      mode == :no ->
+      mode == :disengage ->
+        Switch.off(sw_name, lazy: false)
         ["\nclean mode forced to DISENGAGED\n"] |> IO.puts()
-        resume_ato()
         :ok
 
       mode ->
         [
           "\n",
           "Reef.clean/1: \n",
-          " :toggle - toogle clean mode (default)\n",
-          " :yes    - engage clean mode\n",
-          " :no     - disengage clean mode\n"
+          " :toggle    - toogle clean mode (default)\n",
+          " :engage    - engage clean mode with lazy: false\n",
+          " :disengage - disengage clean mode with lazy: false\n"
         ]
         |> IO.puts()
 

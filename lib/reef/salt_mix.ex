@@ -12,9 +12,12 @@ defmodule Reef.Salt.Fill do
   def abort do
     pid = Keeper.get_key(@keeper_key_pid)
 
-    if Process.alive?(pid),
-      do: Task.Supervisor.terminate_child(Helen.TaskSupervisor, pid),
-      else: :not_alive
+    if Process.alive?(pid) do
+      ["salt mix fill aborting (", inspect(pid), ")"] |> Logger.info()
+      Task.Supervisor.terminate_child(Helen.TaskSupervisor, pid)
+    else
+      :not_alive
+    end
   end
 
   def default_opts do
