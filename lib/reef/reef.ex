@@ -91,6 +91,30 @@ defmodule Reef do
   def fill(opts \\ []), do: Reef.Salt.Fill.kickstart(opts)
   def halt_fill(opts \\ []), do: Reef.Salt.Fill.abort(opts)
 
+  def test_aerate, do: test_opts_aerate() |> Reef.aerate()
+  def test_fill, do: test_opts_fill() |> Reef.fill()
+
+  def test_opts_fill do
+    [
+      fill_time: [seconds: 1],
+      topoff_time: [seconds: 1],
+      valve_open: [seconds: 1],
+      valve_closed: [seconds: 1]
+    ]
+  end
+
+  def test_opts_aerate do
+    [
+      switch_air: "mixtank_air",
+      switch_pump: "mixtank_pump",
+      prep_time: [seconds: 10],
+      air_on: [seconds: 1],
+      air_off: [seconds: 1],
+      pump_on: [seconds: 1],
+      pump_off: [seconds: 1]
+    ]
+  end
+
   # def heat_standby do
   #   [
   #     {swmt(), swmt() |> ths_activate(standby())},

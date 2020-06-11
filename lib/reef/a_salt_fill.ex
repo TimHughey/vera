@@ -7,40 +7,39 @@ defmodule Reef.Salt.Fill do
   use Task
   require Logger
 
-  @keeper_key_pid :reef_salt_mix_pid
-
   def abort(opts \\ []) when is_list(opts) do
-    opts_map = Map.merge(Enum.into(opts, %{}), Enum.into(%{}, default_opts()))
+    alias Reef.Salt.Fill, as: MOD
+
+    opts_map = Map.merge(Enum.into(opts, %{}), Enum.into(default_opts(), %{}))
 
     sw_name = Map.get(opts_map, :valve, "no_valve")
-    pid = Keeper.get_key(@keeper_key_pid)
 
-    if Process.alive?(pid) do
-      ["salt mix fill aborting ", inspect(pid)] |> Logger.info()
-      Task.Supervisor.terminate_child(Helen.TaskSupervisor, pid)
+    task_term_rc = ExtraMod.task_abort({MOD, :fill})
+
+    with {:ok, %{pid: pid}} <- task_term_rc do
+      ["salt mix fill aborting ", inspect(task_term_rc)] |> Logger.info()
 
       rc = Switch.off(sw_name, wait_for_pid: pid, timeout_ms: 1500)
-      {:aborted, :reef_salt_mix, sw_name, rc}
+      [{:aborted, :reef_salt_mix, sw_name, rc}]
     else
-      :not_alive
+      _anything -> [{:failed, task_term_rc}]
     end
   end
 
   def default_opts do
     [
-      keeper_key: :reef_salt_mix,
       valve: "reefmix_rodi_valve",
-      fill_primary_total_time: [hours: 8],
-      fill_final_total_time: [hours: 1],
-      fill_valve_open: [minutes: 2, seconds: 48],
-      fill_valve_closed: [minutes: 17]
+      fill_time: [hours: 8],
+      topoff_time: [hours: 1],
+      valve_open: [minutes: 2, seconds: 48],
+      valve_closed: [minutes: 17]
     ]
   end
 
   def kickstart(opts \\ []) when is_list(opts) do
-    {_rc, task} = Task.Supervisor.start_child(Helen.TaskSupervisor, Reef.Salt.Fill, :run, [opts])
+    alias Reef.Salt.Fill, as: MOD
 
-    Keeper.put_key(@keeper_key_pid, task)
+    ExtraMod.task_start({MOD, :fill, :run, opts})
   end
 
   @doc """
@@ -49,12 +48,14 @@ defmodule Reef.Salt.Fill do
 
   @doc since: "0.0.7"
   def run(opts \\ []) when is_list(opts) do
+    alias Reef.Salt.Fill, as: MOD
+
     opts_map = Keyword.merge(default_opts(), opts) |> Enum.into(%{})
 
-    with %{keeper_key: key} = cm <- make_control_map(opts_map) do
+    with %{fill_duration: _} = cm <- make_control_map(opts_map) do
       rc = [fill_primary(cm), fill_final(cm)]
 
-      Keeper.put_key(key, rc)
+      ExtraMod.task_store_rc({MOD, :fill, rc})
     else
       error -> error
     end
@@ -64,7 +65,7 @@ defmodule Reef.Salt.Fill do
   ## Private
   ##
 
-  defp fill_primary(%{fill_primary_start: s, fill_primary_duration: d} = cm) do
+  defp fill_primary(%{start: s, fill_duration: d} = cm) do
     ms = TimeSupport.duration_ms(d)
     elapsed = Duration.elapsed(now(), s)
     elapsed_ms = Duration.to_milliseconds(elapsed)
@@ -100,7 +101,7 @@ defmodule Reef.Salt.Fill do
     end
   end
 
-  defp fill_final(%{fill_final_duration: duration} = cm) do
+  defp fill_final(%{topoff_duration: duration} = cm) do
     ms = TimeSupport.duration_ms(duration)
 
     # fill part 2 (final fill) is trivial -- just open the rodi valve to
@@ -114,19 +115,19 @@ defmodule Reef.Salt.Fill do
 
   defp make_control_map(opts_map) do
     validate = fn
-      %{fill_primary_duration: _, fill_final_duration: _, fill_primary_start: _} = x -> x
+      %{fill_duration: _, topoff_duration: _, start: _} = x -> x
       _not_valid -> %{}
     end
 
     # build the base control map with the passed opts and :started
-    base = %{fill_primary_start: now()}
+    base = %{start: now()}
     control_map = Map.merge(base, opts_map)
 
     # convert the :fill and :final opts to durations
     for {key, val} <- control_map, into: %{} do
       case key do
-        :fill_primary_total_time -> {:fill_primary_duration, TimeSupport.duration(val)}
-        :fill_final_total_time -> {:fill_final_duration, TimeSupport.duration(val)}
+        :fill_time -> {:fill_duration, TimeSupport.duration(val)}
+        :topoff_time -> {:topoff_duration, TimeSupport.duration(val)}
         key -> {key, val}
       end
     end
@@ -146,7 +147,7 @@ defmodule Reef.Salt.Fill do
     Switch.position(valve)
   end
 
-  defp water_add(%{fill_valve_open: opts} = cm) do
+  defp water_add(%{valve_open: opts} = cm) do
     ms = TimeSupport.duration_ms(opts)
 
     # open the valve to the salt water mix tank
@@ -159,7 +160,7 @@ defmodule Reef.Salt.Fill do
     rodi_valve(cm, :closed)
   end
 
-  defp water_recharge(%{fill_valve_closed: opts} = cm) do
+  defp water_recharge(%{valve_closed: opts} = cm) do
     ms = TimeSupport.duration_ms(opts)
 
     # for safety sake, ensure the valve is OFF
