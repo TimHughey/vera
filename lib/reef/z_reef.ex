@@ -93,8 +93,30 @@ defmodule Reef do
   def fill_status(opts \\ []), do: Reef.Salt.Fill.status(opts)
   def halt_fill(opts \\ []), do: Reef.Salt.Fill.abort(opts)
 
+  def keep_fresh(opts \\ []), do: Reef.Salt.KeepFresh.kickstart(opts)
+  def keep_fresh_status(opts \\ []), do: Reef.Salt.KeepFresh.status(opts)
+  def halt_keep_fresh(opts \\ []), do: Reef.Salt.KeepFresh.abort(opts)
+
+  def mix(opts \\ []), do: Reef.Salt.Mix.kickstart(opts)
+  def mix_status(opts \\ []), do: Reef.Salt.Mix.status(opts)
+  def halt_mix(opts \\ []), do: Reef.Salt.Mix.abort(opts)
+
   def test_aerate, do: test_opts_aerate() |> Reef.aerate()
   def test_fill, do: test_opts_fill() |> Reef.fill()
+  def test_keep_fresh, do: test_opts_keep_fresh() |> Reef.keep_fresh()
+  def test_mix, do: test_opts_mix() |> Reef.mix()
+
+  def test_opts_aerate do
+    [
+      switch_air: "mixtank_air",
+      switch_pump: "mixtank_pump",
+      aerate_time: [seconds: 10],
+      air_on: [seconds: 1],
+      air_off: [seconds: 1],
+      pump_on: [seconds: 1],
+      pump_off: [seconds: 1]
+    ]
+  end
 
   def test_opts_fill do
     [
@@ -105,11 +127,23 @@ defmodule Reef do
     ]
   end
 
-  def test_opts_aerate do
+  def test_opts_keep_fresh do
     [
       switch_air: "mixtank_air",
       switch_pump: "mixtank_pump",
-      aerate_time: [seconds: 10],
+      keep_fresh_time: [seconds: 10],
+      air_on: [seconds: 1],
+      air_off: [seconds: 1],
+      pump_on: [seconds: 1],
+      pump_off: [seconds: 1]
+    ]
+  end
+
+  def test_opts_mix do
+    [
+      switch_air: "mixtank_air",
+      switch_pump: "mixtank_pump",
+      mix_time: [seconds: 10],
       air_on: [seconds: 1],
       air_off: [seconds: 1],
       pump_on: [seconds: 1],

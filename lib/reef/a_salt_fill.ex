@@ -1,6 +1,6 @@
 defmodule Reef.Salt.Fill do
   @moduledoc """
-    Implements the aspects of mixing a batch of salt water
+    Implements the aspects of filling the Salt Water Mix tank with RODI
   """
 
   use Timex
@@ -15,7 +15,7 @@ defmodule Reef.Salt.Fill do
     task_term_rc = ExtraMod.task_abort({MOD, :fill})
 
     with {:ok, %{pid: pid}} <- task_term_rc do
-      ["salt mix fill aborting ", inspect(task_term_rc)]
+      ["fill aborting ", inspect(task_term_rc)]
       |> ExtraMod.task_store_msg({MOD, :fill})
 
       rc = Switch.off(sw_name, wait_for_pid: pid, timeout_ms: 1500)
@@ -62,7 +62,7 @@ defmodule Reef.Salt.Fill do
       rc = [fill_primary(cm), fill_final(cm)]
 
       ExtraMod.task_store_rc({MOD, :fill, rc})
-      ["salt mix fill complete"] |> ExtraMod.task_store_status({MOD, :fill})
+      ["fill complete"] |> ExtraMod.task_store_msg({MOD, :fill})
     else
       error -> error
     end
@@ -93,7 +93,7 @@ defmodule Reef.Salt.Fill do
     %{cycles: cys} = cm = Map.update(cm, :cycles, 1, fn x -> x + 1 end)
 
     [
-      "salt mix fill starting cycle #",
+      "fill starting cycle #",
       Integer.to_string(cys),
       " (elapsed time ",
       TimeSupport.humanize_duration(elapsed),

@@ -14,7 +14,7 @@ defmodule Reef.Salt.Aerate do
 
       with %{pid: pid, task_opts: %{switch: sw_name}} <- task_term_rc do
         [
-          "salt mix aerate aborting ",
+          "aerate aborting ",
           inspect(subsystem),
           " ",
           inspect(task_term_rc, pretty: true)
@@ -70,7 +70,7 @@ defmodule Reef.Salt.Aerate do
 
       ExtraMod.task_store_rc({MOD, sub, rc})
 
-      ["salt mix aerate ", Atom.to_string(sub), " complete"]
+      ["aerate ", Atom.to_string(sub), " complete"]
       |> ExtraMod.task_store_status({MOD, :sub})
     else
       error -> error
@@ -105,7 +105,7 @@ defmodule Reef.Salt.Aerate do
     %{cycles: cys} = cm = Map.update(cm, :cycles, 1, fn x -> x + 1 end)
 
     [
-      "salt mix aerate \"",
+      "aerate \"",
       Atom.to_string(subsystem),
       "\" starting cycle #",
       Integer.to_string(cys),
