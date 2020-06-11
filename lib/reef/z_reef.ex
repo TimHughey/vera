@@ -38,11 +38,12 @@ defmodule Reef do
       ) do
     switches = Keyword.get(opts, :switches, [])
 
-    for s <- switches, do: Switch.off(s)
+    Switch.off(switches)
   end
 
-  def aerate(opts \\ []), do: Reef.Salt.Prep.kickstart(opts)
-  def halt_aerate(opts \\ []), do: Reef.Salt.Prep.abort(opts)
+  def aerate(opts \\ []), do: Reef.Salt.Aerate.kickstart(opts)
+  def aerate_status(opts \\ []), do: Reef.Salt.Aerate.status(opts)
+  def halt_aerate(opts \\ []), do: Reef.Salt.Aerate.abort(opts)
 
   def clean(mode \\ :toggle, sw_name \\ "display tank ato")
       when is_atom(mode) and mode in [:engage, :disengage, :toggle, :help, :usage] and
@@ -89,6 +90,7 @@ defmodule Reef do
   end
 
   def fill(opts \\ []), do: Reef.Salt.Fill.kickstart(opts)
+  def fill_status(opts \\ []), do: Reef.Salt.Fill.status(opts)
   def halt_fill(opts \\ []), do: Reef.Salt.Fill.abort(opts)
 
   def test_aerate, do: test_opts_aerate() |> Reef.aerate()
@@ -107,7 +109,7 @@ defmodule Reef do
     [
       switch_air: "mixtank_air",
       switch_pump: "mixtank_pump",
-      prep_time: [seconds: 10],
+      aerate_time: [seconds: 10],
       air_on: [seconds: 1],
       air_off: [seconds: 1],
       pump_on: [seconds: 1],

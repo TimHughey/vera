@@ -4,8 +4,6 @@ defmodule Reef.Salt.Fill do
   """
 
   use Timex
-  use Task
-  require Logger
 
   def abort(opts \\ []) when is_list(opts) do
     alias Reef.Salt.Fill, as: MOD
@@ -17,7 +15,8 @@ defmodule Reef.Salt.Fill do
     task_term_rc = ExtraMod.task_abort({MOD, :fill})
 
     with {:ok, %{pid: pid}} <- task_term_rc do
-      ["salt mix fill aborting ", inspect(task_term_rc)] |> Logger.info()
+      ["salt mix fill aborting ", inspect(task_term_rc)]
+      |> ExtraMod.task_store_msg({MOD, :fill})
 
       rc = Switch.off(sw_name, wait_for_pid: pid, timeout_ms: 1500)
       [{:aborted, :reef_salt_mix, sw_name, rc}]
@@ -39,14 +38,21 @@ defmodule Reef.Salt.Fill do
   def kickstart(opts \\ []) when is_list(opts) do
     alias Reef.Salt.Fill, as: MOD
 
-    ExtraMod.task_start({MOD, :fill, :run, opts})
+    sub = :fill
+
+    with {:ok, task} <- ExtraMod.task_start({MOD, sub, :run, opts}),
+         %{pid: pid} <- task do
+      {sub, {:ok, pid}}
+    else
+      error -> {sub, error}
+    end
   end
 
   @doc """
    Runs a task to fill the Salt Water Mix Tank
   """
 
-  @doc since: "0.0.7"
+  @doc since: "0.0.23"
   def run(opts \\ []) when is_list(opts) do
     alias Reef.Salt.Fill, as: MOD
 
@@ -56,9 +62,20 @@ defmodule Reef.Salt.Fill do
       rc = [fill_primary(cm), fill_final(cm)]
 
       ExtraMod.task_store_rc({MOD, :fill, rc})
+      ["salt mix fill complete"] |> ExtraMod.task_store_status({MOD, :fill})
     else
       error -> error
     end
+  end
+
+  @doc """
+   Retrieve the latest status message
+  """
+  @doc since: "0.0.23"
+  def status(opts \\ []) do
+    alias Reef.Salt.Fill, as: MOD
+
+    ExtraMod.task_status({MOD, :fill}, opts)
   end
 
   ##
@@ -66,6 +83,8 @@ defmodule Reef.Salt.Fill do
   ##
 
   defp fill_primary(%{start: s, fill_duration: d} = cm) do
+    alias Reef.Salt.Fill, as: MOD
+
     ms = TimeSupport.duration_ms(d)
     elapsed = Duration.elapsed(now(), s)
     elapsed_ms = Duration.to_milliseconds(elapsed)
@@ -80,8 +99,7 @@ defmodule Reef.Salt.Fill do
       TimeSupport.humanize_duration(elapsed),
       ")"
     ]
-    |> IO.iodata_to_binary()
-    |> Logger.info()
+    |> ExtraMod.task_store_msg({MOD, :fill})
 
     case elapsed_ms do
       # we have yet to pass the requesed runtime, do another cycle
