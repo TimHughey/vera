@@ -27,7 +27,7 @@ defmodule Reef.Salt.Fill do
 
   def default_opts do
     [
-      valve: "mixtank_valve",
+      valve: "mixtank_rodi",
       fill_time: [hours: 8],
       topoff_time: [hours: 1],
       valve_open: [minutes: 2, seconds: 48],
