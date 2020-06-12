@@ -8,42 +8,25 @@ defmodule Reef do
 
   # import IO.ANSI
 
-  # @doc """
-  #   Set system for adding salt to the SWMT (salt water mix tank).
-  #
-  #     ## Dutycycle and Thermostats
-  #
-  #       The Dutycycles and Thermostats are set to the following modes:
-  #
-  #       Name          | Mode           | Type
-  #       ------------- |--------------- --------------
-  #        mix pump     |  add salt      |  Dutycycle
-  #        mix air      |  add salt      |  Dutycycle
-  #        rodi fill    |  __halted__    |  Dutycycle
-  #        mix heat     |  standby       |  Thermostat
-  #        display tank |  __unchanged__ |  Thermostat
-  #
-  # """
-  # def add_salt do
-  #   profile_name = "add salt"
-  #   rmp() |> dc_activate_profile(profile_name)
-  #   rma() |> dc_halt()
-  #   rmrf() |> dc_halt()
-  #   swmt() |> ths_activate(standby())
-  # end
-  #
+  def init do
+    switches_all_off()
+  end
 
-  def init(
-        opts \\ [switches: ["reefmix_rodi_valve", "mixtank_pump", "mixtank_air", "mixtank_heat"]]
-      ) do
-    switches = Keyword.get(opts, :switches, [])
+  def abort_all do
+    alias Thermostat.Server, as: T
 
-    Switch.off(switches)
+    T.standby("mix tank")
+
+    mods = [Reef.Salt.Aerate, Reef.Salt.Fill, Reef.Salt.KeepFresh]
+
+    for m <- mods do
+      apply(m, :abort, [])
+    end
   end
 
   def aerate(opts \\ []), do: Reef.Salt.Aerate.kickstart(opts)
+  def aerate_abort(opts \\ []), do: Reef.Salt.Aerate.abort(opts)
   def aerate_status(opts \\ []), do: Reef.Salt.Aerate.status(opts)
-  def halt_aerate(opts \\ []), do: Reef.Salt.Aerate.abort(opts)
 
   def clean(mode \\ :toggle, sw_name \\ "display tank ato")
       when is_atom(mode) and mode in [:engage, :disengage, :toggle, :help, :usage] and
@@ -90,16 +73,79 @@ defmodule Reef do
   end
 
   def fill(opts \\ []), do: Reef.Salt.Fill.kickstart(opts)
+  def fill_abort(opts \\ []), do: Reef.Salt.Fill.abort(opts)
   def fill_status(opts \\ []), do: Reef.Salt.Fill.status(opts)
-  def halt_fill(opts \\ []), do: Reef.Salt.Fill.abort(opts)
+
+  def heat_all_off do
+    alias Thermostat.Server, as: T
+
+    heaters = ["mix tank", "display_tank"]
+
+    for h <- heaters do
+      T.standby(h)
+    end
+  end
 
   def keep_fresh(opts \\ []), do: Reef.Salt.KeepFresh.kickstart(opts)
+  def keep_fresh_abort(opts \\ []), do: Reef.Salt.KeepFresh.abort(opts)
   def keep_fresh_status(opts \\ []), do: Reef.Salt.KeepFresh.status(opts)
-  def halt_keep_fresh(opts \\ []), do: Reef.Salt.KeepFresh.abort(opts)
+
+  def match_display_tank do
+    alias Thermostat.Server, as: T
+
+    [
+      thermostat: T.activate_profile("mix tank", "prep for change"),
+      ato: Switch.off("display tank ato"),
+      keep_fresh: keep_fresh()
+    ]
+  end
 
   def mix(opts \\ []), do: Reef.Salt.Mix.kickstart(opts)
+  def mix_abort(opts \\ []), do: Reef.Salt.Mix.abort(opts)
   def mix_status(opts \\ []), do: Reef.Salt.Mix.status(opts)
-  def halt_mix(opts \\ []), do: Reef.Salt.Mix.abort(opts)
+
+  def pump_toggle do
+    Switch.toggle("mix pump")
+  end
+
+  def switches_all_off(
+        opts \\ ["reefmix_rodi_valve", "mixtank_pump", "mixtank_air", "mixtank_heat"]
+      ) do
+    for s <- opts do
+      Switch.off(s)
+    end
+  end
+
+  def t_activate({n, p}) when is_binary(n) and is_binary(p) do
+    alias Thermostat.Server, as: T
+
+    T.activate_profile(n, p)
+  end
+
+  def t_standby(n) when is_binary(n) do
+    alias Thermostat.Server, as: T
+
+    T.standby(n)
+  end
+
+  def temp_ok? do
+    dt_temp = Sensor.fahrenheit(name: "display_tank", since_secs: 30)
+    mt_temp = Sensor.fahrenheit(name: "mixtank", since_secs: 30)
+
+    diff = abs(dt_temp - mt_temp)
+
+    if diff < 0.7, do: true, else: true
+  end
+
+  def water_change_complete do
+    alias Thermostat.Server, as: T
+
+    T.activate_profile("display tank", "75F")
+  end
+
+  ##
+  ## Testing Purposes
+  ##
 
   def test_aerate, do: test_opts_aerate() |> Reef.aerate()
   def test_fill, do: test_opts_fill() |> Reef.fill()
@@ -151,6 +197,30 @@ defmodule Reef do
     ]
   end
 
+  def future_example do
+    [
+      group: :reef,
+      category: :keep_fresh,
+      actions: [
+        sub1: [repeat_for: [hours: 2], on: "switch", sleep: [minutes: 1]],
+        sub2: [
+          oneshot: true,
+          off: "switch2",
+          sleep: [seconds: 20],
+          on: "switch2",
+          sleep: [seconds: 56]
+        ],
+        sub3: [cycles: 200, sleep: [seconds: 45], on: "switch3"],
+        sub4: [
+          infinity: true,
+          sleep: [minutes: 5],
+          on: "switch3",
+          sleep: [minutes: 3, off: "switch3"]
+        ]
+      ]
+    ]
+  end
+
   # def heat_standby do
   #   [
   #     {swmt(), swmt() |> ths_activate(standby())},
@@ -158,88 +228,16 @@ defmodule Reef do
   #   ]
   # end
   #
-  # def keep_fresh do
-  #   dc_activate_profile(rmp(), "keep fresh")
-  #   dc_activate_profile(rma(), "keep fresh")
-  # end
   #
   # def heat(p) when is_binary(p), do: ths_activate(swmt(), p)
   #
   # def heat(_), do: print_usage("mix_heat", "profile")
   #
-  # def match_display_tank do
-  #   ths_activate(swmt(), "prep for change")
-  #   dc_activate_profile(rma(), "salt mix")
-  #   dc_activate_profile(rmp(), "salt mix")
-  #   status()
-  # end
-  #
 
-  # def status(opts \\ []) do
-  #   opts = opts ++ [active: true]
-  #
-  #   Keyword.get(opts, :clear_screen, true) && IO.puts(clear())
-  #   print_heading("Reef Subsystem Status")
-  #
-  #   dcs = for name <- [rmp(), rma(), rmrf(), ato()], do: dc_status(name, opts)
-  #   ths = for name <- [swmt(), display_tank()], do: th_status(name, opts)
-  #   ss = for name <- [dt_sensor(), swmt_sensor()], do: sensor_status(name)
-  #
-  #   all = dcs ++ ths
-  #
-  #   :ok =
-  #     Scribe.print(all,
-  #       data: [
-  #         {"Subsystem", :subsystem},
-  #         {"Status", :status},
-  #         {"Active", :active}
-  #       ]
-  #     )
-  #     |> IO.puts()
-  #
-  #   Scribe.print(ss,
-  #     data: [{"Sensor", :subsystem}, {"Temperature", :status}]
-  #   )
-  #   |> IO.puts()
-  # end
-
-  # def halt("display tank ato"), do: dc_activate_profile(ato(), "off")
-  # def halt(name) when is_binary(name), do: dc_halt(name)
-  # def halt_ato, do: dc_activate_profile(ato(), "off")
-  # def halt_air, do: dc_halt(rma())
-  # def halt_display_tank, do: ths_standby(dt())
-  # def halt_pump, do: dc_halt(rmp())
-  # def halt_rodi, do: dc_halt(rmrf())
-
-  # def resume("display tank ato"), do: dc_halt(ato())
-  # def resume(name) when is_binary(name), do: dc_resume(name)
-  # def resume_ato, do: dc_halt(ato())
-  # def resume_air, do: dc_resume(rma())
   # def resume_display_tank, do: ths_activate(dt(), "75F")
-  # def resume_pump, do: dc_resume(rmp())
-  # def resume_rodi, do: dc_resume(rmrf())
 
-  # def ths_activate(th, profile)
-  #     when is_binary(th) and is_binary(profile) do
-  #   Thermostat.Server.activate_profile(th, profile)
-  # end
-  #
-  # def ths_standby(th) when is_binary(th) do
-  #   Thermostat.Server.standby(th)
-  # end
-  #
-  # def utility_pump(p) when is_binary(p),
-  #   do: dc_activate_profile(rmp(), p)
-  #
-  # def utility_pump(_), do: print_usage("utility_pump", "profile")
-  #
-  # def utility_pump_off, do: rmp() |> dc_halt()
-  #
   # def water_change_begin(opts \\ [check_diff: true, interactive: true])
-  #
-  # def water_change_begin(:help) do
-  #   IO.puts(water_change_begin_help())
-  # end
+
   #
   # def water_change_begin(opts) when is_list(opts) do
   #   check_diff = Keyword.get(opts, :check_diff, true)
@@ -304,51 +302,7 @@ defmodule Reef do
   #   IO.puts(" ")
   # end
   #
-  # defp print_usage(f, p),
-  #   do:
-  #     IO.puts(
-  #       light_green() <>
-  #         "USAGE: " <>
-  #         light_blue() <>
-  #         f <> "(" <> yellow() <> p <> light_blue() <> ")" <> reset()
-  #     )
-  #
-  # def dc_activate_profile(name, p) do
-  #   with {:ok, status} when is_list(status) <-
-  #          Dutycycle.Server.activate_profile(name, p) do
-  #     status
-  #   else
-  #     error -> ["error: ", inspect(error, pretty: true)] |> IO.puts()
-  #   end
-  # end
-  #
-  # def dc_halt(name) do
-  #   with {:ok, status} when is_list(status) <-
-  #          Dutycycle.Server.halt(name) do
-  #     status
-  #   else
-  #     error -> ["error: ", inspect(error, pretty: true)] |> IO.puts()
-  #   end
-  # end
-  #
-  # def dc_resume(name) do
-  #   with {:ok, status} when is_list(status) <-
-  #          Dutycycle.Server.resume(name) do
-  #     status
-  #   else
-  #     error -> inspect(error, pretty: true) |> IO.puts()
-  #   end
-  # end
-  #
-  # def dc_status(name, opts \\ [active: true]) do
-  #   profile = Dutycycle.Server.profiles(name, opts)
-  #
-  #   %{
-  #     subsystem: name,
-  #     status: profile |> Map.get(:name),
-  #     active: Dutycycle.Server.active?(name)
-  #   }
-  # end
+
   #
   # defp sensor_status(name) do
   #   temp_format = fn sensor ->
@@ -382,42 +336,9 @@ defmodule Reef do
   # end
   #
   # # constants
-  # defp ato, do: "display tank ato"
   # defp display_tank, do: "display tank"
   # defp dt, do: display_tank()
   # defp dt_sensor, do: "display_tank"
-  # defp rmrf, do: "mix rodi"
-  # defp rma, do: "mix air"
-  # defp rmp, do: "mix pump"
-  # defp standby, do: "standby"
   # defp swmt, do: "mix tank"
   # defp swmt_sensor, do: "mixtank"
-  #
-  # # help text
-  # defp water_change_begin_help do
-  #   ~S"""
-  #   Water Change Begin Help
-  #
-  #     usage: water_change_begin(opts :: [Keyword.t])
-  #
-  #     Options:
-  #
-  #       check_diff: Boolean.t
-  #         Default:  true
-  #
-  #         Check the difference between the Display Tank and Mixtank before
-  #         beginning water change.  If the difference is less than or equal to
-  #         allowed difference then proceed.  If the difference is greater than
-  #         the allowed difference water change is not started.
-  #
-  #       allowed_diff: Float.t
-  #         Default: 0.8
-  #
-  #         The allowed temperature difference between the Display Tank and Mixtank.
-  #
-  #     Examples:
-  #       water_change_begin(check_diff: false)
-  #       water_change_begin(allowed_diff: 0.9)
-  #   """
-  # end
 end
