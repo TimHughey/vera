@@ -8,7 +8,7 @@ defmodule Reef do
 
   # import IO.ANSI
 
-  def init do
+  def init(opts \\ []) when is_list(opts) do
     alias Thermostat.Server, as: T
     switches_all_off()
 
