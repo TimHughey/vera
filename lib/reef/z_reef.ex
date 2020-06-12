@@ -9,7 +9,11 @@ defmodule Reef do
   # import IO.ANSI
 
   def init do
+    alias Thermostat.Server, as: T
     switches_all_off()
+
+    T.standby("mix tank")
+    T.activate_profile("display tank", "75F")
   end
 
   def abort_all do
@@ -81,7 +85,7 @@ defmodule Reef do
   def heat_all_off do
     alias Thermostat.Server, as: T
 
-    heaters = ["mix tank", "display_tank"]
+    heaters = ["mix tank", "display tank"]
 
     for h <- heaters do
       T.standby(h)
@@ -110,12 +114,10 @@ defmodule Reef do
     Switch.toggle("mix pump")
   end
 
-  def switches_all_off(
-        opts \\ ["reefmix_rodi_valve", "mixtank_pump", "mixtank_air", "mixtank_heat"]
-      ) do
-    for s <- opts do
-      Switch.off(s)
-    end
+  def switches_all_off(opts \\ ["mixtank"]) when is_list(opts) do
+    sw_names = for x <- opts, do: Switch.names_begin_with(x)
+
+    for s <- List.flatten(sw_names), do: Switch.off(s)
   end
 
   def t_activate({n, p}) when is_binary(n) and is_binary(p) do

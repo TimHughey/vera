@@ -65,7 +65,7 @@ defmodule Irrigation do
   end
 
   def init do
-    for n <- Switch.alias_names_begin_with("irrigation"), do: Switch.off(n)
+    for n <- Switch.names_begin_with("irrigation"), do: Switch.off(n)
 
     :ok
   end
