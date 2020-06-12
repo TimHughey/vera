@@ -26,7 +26,9 @@ defmodule Reef do
 
   def aerate(opts \\ []), do: Reef.Salt.Aerate.kickstart(opts)
   def aerate_abort(opts \\ []), do: Reef.Salt.Aerate.abort(opts)
+  def aerate_elapsed(opts \\ []), do: Reef.Salt.Aerate.elapsed_as_binary(opts)
   def aerate_status(opts \\ []), do: Reef.Salt.Aerate.status(opts)
+  def aerate_state(opts \\ []), do: Reef.Salt.Aerate.state(opts)
 
   def clean(mode \\ :toggle, sw_name \\ "display tank ato")
       when is_atom(mode) and mode in [:engage, :disengage, :toggle, :help, :usage] and
@@ -129,8 +131,8 @@ defmodule Reef do
   end
 
   def temp_ok? do
-    dt_temp = Sensor.fahrenheit(name: "display_tank", since_secs: 30)
-    mt_temp = Sensor.fahrenheit(name: "mixtank", since_secs: 30)
+    dt_temp = Sensor.fahrenheit("display_tank", since_secs: 30)
+    mt_temp = Sensor.fahrenheit("mixtank", since_secs: 30)
 
     diff = abs(dt_temp - mt_temp)
 

@@ -41,6 +41,17 @@ defmodule Reef.Salt.Aerate do
     ]
   end
 
+  def elapsed_as_binary(opts \\ []) do
+    alias Reef.Salt.Aerate, as: MOD
+
+    cm = ExtraMod.task_get_state({MOD, :air}, opts)
+
+    start = Map.get(cm, :start, Duration.zero())
+    end_duration = Map.get(cm, :end, now())
+
+    Duration.elapsed(end_duration, start) |> TimeSupport.humanize_duration()
+  end
+
   def kickstart(opts \\ []) when is_list(opts) do
     alias Reef.Salt.Aerate, as: MOD
 
@@ -71,7 +82,7 @@ defmodule Reef.Salt.Aerate do
       ExtraMod.task_store_rc({MOD, sub, rc})
 
       ["aerate ", Atom.to_string(sub), " complete"]
-      |> ExtraMod.task_store_status({MOD, :sub})
+      |> ExtraMod.task_store_msg({MOD, :sub})
     else
       error -> error
     end
@@ -91,18 +102,39 @@ defmodule Reef.Salt.Aerate do
     |> IO.puts()
   end
 
+  @doc """
+   Retrieve the latest state
+  """
+  @doc since: "0.0.23"
+  def state(opts \\ []) do
+    alias Reef.Salt.Aerate, as: MOD
+
+    for sub <- [:air, :pump], into: %{} do
+      {sub, ExtraMod.task_get_state({MOD, sub}, opts)}
+    end
+  end
+
   ##
   ## Private
   ##
 
-  defp run_subsystem(%{subsystem: subsystem, start: s, aerate_duration: d} = cm) do
+  defp elapsed(%{start: start}) do
+    Duration.elapsed(now(), start)
+  end
+
+  defp elapsed_ms(cm) do
+    elapsed(cm) |> TimeSupport.duration_ms()
+  end
+
+  defp run_subsystem(%{subsystem: subsystem, start: _, aerate_duration: d} = cm) do
     alias Reef.Salt.Aerate, as: MOD
 
     max_ms = TimeSupport.duration_ms(d)
-    elapsed = Duration.elapsed(now(), s)
 
     # update the cycle count
     %{cycles: cys} = cm = Map.update(cm, :cycles, 1, fn x -> x + 1 end)
+
+    ExtraMod.task_put_state({MOD, subsystem, cm})
 
     [
       "aerate \"",
@@ -110,12 +142,12 @@ defmodule Reef.Salt.Aerate do
       "\" starting cycle #",
       Integer.to_string(cys),
       " (elapsed time ",
-      TimeSupport.humanize_duration(elapsed),
+      elapsed(cm) |> TimeSupport.humanize_duration(),
       ")"
     ]
     |> ExtraMod.task_store_msg({MOD, subsystem})
 
-    case Duration.to_milliseconds(elapsed) do
+    case elapsed_ms(cm) do
       # we have yet to pass the requesed runtime, do another cycle
       x when x < max_ms ->
         # turn on, off and sleep the subsystem
@@ -125,7 +157,9 @@ defmodule Reef.Salt.Aerate do
         run_subsystem(cm)
 
       _done ->
-        # enough time has elapsed, we're done
+        # enough time has elapsed, fall through
+        cm = Map.put(cm, :end, now())
+        ExtraMod.task_put_state({MOD, subsystem, cm})
         Keyword.new() |> Keyword.put(subsystem, :done)
     end
   end
@@ -148,7 +182,7 @@ defmodule Reef.Salt.Aerate do
     base = %{start: now()}
     control_map = Map.merge(base, opts_map)
 
-    # convert the :fill and :final opts to durations
+    # convert the :aerate time, :pump and :air keyword lists to Duration
     for {key, val} <- control_map, into: %{} do
       cond do
         key == :aerate_time -> {:aerate_duration, TimeSupport.duration(val)}
@@ -166,14 +200,26 @@ defmodule Reef.Salt.Aerate do
 
   defp now, do: Duration.now()
 
-  defp subsystem(%{switch: sw_name, on: on, off: off}) do
+  defp sleep(ms) when is_number(ms) do
+    receive do
+      {:abort} -> IO.puts("received abort")
+      msg -> ["received msg: ", inspect(msg, pretty: true)] |> IO.puts()
+    after
+      trunc(ms) ->
+        :ok
+    end
+  end
+
+  defp subsystem(%{subsystem: sub, switch: sw_name, on: on, off: off} = cm) do
     on_ms = TimeSupport.duration_ms(on)
     off_ms = TimeSupport.duration_ms(off)
 
+    ExtraMod.task_put_state({MOD, sub, cm})
     Switch.on(sw_name)
-    Process.sleep(on_ms)
+    sleep(on_ms)
 
+    ExtraMod.task_put_state({MOD, sub, cm})
     Switch.off(sw_name)
-    Process.sleep(off_ms)
+    sleep(off_ms)
   end
 end
