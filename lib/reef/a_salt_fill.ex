@@ -27,7 +27,7 @@ defmodule Reef.Salt.Fill do
 
   def default_opts do
     [
-      valve: "reefmix_rodi_valve",
+      valve: "mixtank_valve",
       fill_time: [hours: 8],
       topoff_time: [hours: 1],
       valve_open: [minutes: 2, seconds: 48],
@@ -51,7 +51,6 @@ defmodule Reef.Salt.Fill do
   @doc """
    Runs a task to fill the Salt Water Mix Tank
   """
-
   @doc since: "0.0.23"
   def run(opts \\ []) when is_list(opts) do
     alias Reef.Salt.Fill, as: MOD
@@ -63,6 +62,8 @@ defmodule Reef.Salt.Fill do
 
       ExtraMod.task_store_rc({MOD, :fill, rc})
       ["fill complete"] |> ExtraMod.task_store_msg({MOD, :fill})
+
+      ExtraMod.task_put_state({MOD, :fill}, Map.put(cm, :end, now()))
     else
       error -> error
     end
@@ -91,6 +92,8 @@ defmodule Reef.Salt.Fill do
 
     # update the cycle count
     %{cycles: cys} = cm = Map.update(cm, :cycles, 1, fn x -> x + 1 end)
+
+    ExtraMod.task_put_state({MOD, :fill}, cm)
 
     [
       "fill starting cycle #",
