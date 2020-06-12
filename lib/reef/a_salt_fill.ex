@@ -63,7 +63,7 @@ defmodule Reef.Salt.Fill do
       ExtraMod.task_store_rc({MOD, :fill, rc})
       ["fill complete"] |> ExtraMod.task_store_msg({MOD, :fill})
 
-      ExtraMod.task_put_state({MOD, :fill}, Map.put(cm, :end, now()))
+      ExtraMod.task_put_state({MOD, :fill, Map.put(cm, :end, now())})
     else
       error -> error
     end
@@ -93,7 +93,7 @@ defmodule Reef.Salt.Fill do
     # update the cycle count
     %{cycles: cys} = cm = Map.update(cm, :cycles, 1, fn x -> x + 1 end)
 
-    ExtraMod.task_put_state({MOD, :fill}, cm)
+    ExtraMod.task_put_state({MOD, :fill, cm})
 
     [
       "fill starting cycle #",
