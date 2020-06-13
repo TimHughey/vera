@@ -5,19 +5,16 @@ defmodule Irrigation do
 
   require Logger
 
-  def front_porch(sw_name \\ "irrigation front porch", opts \\ [seconds: 30])
-      when is_binary(sw_name) and is_list(opts) do
-    irrigate(sw_name, opts)
+  def front_porch(opts \\ [seconds: 30]) when is_list(opts) do
+    irrigate("irrigation garden", opts)
   end
 
-  def garden_quick(sw_name \\ "irrigation garden", opts \\ [minutes: 1])
-      when is_binary(sw_name) and is_list(opts) do
-    irrigate(sw_name, opts)
+  def garden_quick(opts \\ [minutes: 1]) when is_list(opts) do
+    irrigate("irrigation garden", opts)
   end
 
-  def garden(sw_name \\ "irrigation garden", opts \\ [minutes: 30])
-      when is_binary(sw_name) and is_list(opts) do
-    irrigate(sw_name, opts)
+  def garden(opts \\ [minutes: 30]) when is_list(opts) do
+    irrigate("irrigation garden", opts)
   end
 
   def irrigate(sw_name, opts) when is_binary(sw_name) and is_list(opts) do
@@ -64,8 +61,9 @@ defmodule Irrigation do
     task
   end
 
-  def init do
-    for n <- Switch.names_begin_with("irrigation"), do: Switch.off(n)
+  def init(opts \\ []) when is_list(opts) do
+    switches = (opts ++ ["irrigation"]) |> List.flatten()
+    for n <- switches, do: Switch.off(n)
 
     :ok
   end
