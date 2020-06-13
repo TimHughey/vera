@@ -5,7 +5,7 @@ defmodule Irrigation do
 
   require Logger
 
-  def front_porch(opts \\ [seconds: 30]) when is_list(opts) do
+  def flower_boxes(opts \\ [seconds: 45]) when is_list(opts) do
     irrigate("irrigation garden", opts)
   end
 
