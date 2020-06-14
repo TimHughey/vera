@@ -27,10 +27,8 @@ defmodule Irrigation do
         power(:on)
         Process.sleep(5000)
 
-        ts = Timex.local() |> Timex.format!("{YYYY}-{0M}-{D} {h24}:{m}")
-
         """
-        #{ts} starting #{sw_name} for #{TimeSupport.humanize_duration(duration)}
+        starting #{sw_name} for #{TimeSupport.humanize_duration(duration)}
         """
         |> log()
 
@@ -45,12 +43,8 @@ defmodule Irrigation do
         # time for switch commands to be acked
         Process.sleep(3000)
 
-        ts = Timex.local() |> Timex.format!("{YYYY}-{0M}-{D} {h24}:{m}")
-
         """
-        #{ts} finished #{sw_name} power=#{power(:as_binary)} switch=#{
-          inspect(Switch.position(sw_name))
-        }
+        finished #{sw_name} power=#{power(:as_binary)} switch=#{inspect(Switch.position(sw_name))}
         """
         |> log()
       end)
@@ -67,6 +61,7 @@ defmodule Irrigation do
     schedule(:flower_boxes_pm, ~e[20 16 * * *], &flower_boxes/1, seconds: 15)
 
     Keeper.put_key(:irrigate, "")
+    log("initialized")
 
     :ok
   end
@@ -106,6 +101,9 @@ defmodule Irrigation do
   end
 
   defp log(msg) do
+    ts = Timex.local() |> Timex.format!("{YYYY}-{0M}-{D} {h24}:{m}")
+    msg = "#{ts} #{msg}"
+
     log = Keeper.get_key(:irrigate)
 
     new_log = Enum.join([log, msg], "")
