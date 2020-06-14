@@ -6,7 +6,7 @@ defmodule Irrigation do
   require Logger
 
   def flower_boxes(opts \\ [seconds: 45]) when is_list(opts) do
-    irrigate("irrigation garden", opts)
+    irrigate("irrigation flower boxes", opts)
   end
 
   def garden_quick(opts \\ [minutes: 1]) when is_list(opts) do
