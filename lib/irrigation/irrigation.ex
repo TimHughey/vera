@@ -2,8 +2,8 @@ defmodule Irrigation do
   @moduledoc """
     Irrigation Implementation for Wiss Landing
   """
-
-  require Logger
+  use Timex
+  import Crontab.CronExpression
 
   def flower_boxes(opts \\ [seconds: 45]) when is_list(opts) do
     irrigate("irrigation flower boxes", opts)
@@ -18,6 +18,7 @@ defmodule Irrigation do
   end
 
   def irrigate(sw_name, opts) when is_binary(sw_name) and is_list(opts) do
+    opts = List.flatten(opts)
     duration = TimeSupport.duration(opts)
     ms = TimeSupport.duration_ms(opts)
 
@@ -26,14 +27,12 @@ defmodule Irrigation do
         power(:on)
         Process.sleep(5000)
 
-        [
-          "\"",
-          sw_name,
-          "\" starting for ",
-          TimeSupport.humanize_duration(duration)
-        ]
-        |> IO.iodata_to_binary()
-        |> Logger.info()
+        ts = Timex.local() |> Timex.format!("{YYYY}-{0M}-{D} {h24}:{m}")
+
+        """
+        #{ts} starting #{sw_name} for #{TimeSupport.humanize_duration(duration)}
+        """
+        |> log()
 
         Switch.on(sw_name)
 
@@ -44,18 +43,16 @@ defmodule Irrigation do
         power(:off)
 
         # time for switch commands to be acked
-        Process.sleep(1000)
+        Process.sleep(3000)
 
-        [
-          "\"",
-          sw_name,
-          "\" finished power=",
-          power(:as_binary),
-          " switch=",
+        ts = Timex.local() |> Timex.format!("{YYYY}-{0M}-{D} {h24}:{m}")
+
+        """
+        #{ts} finished #{sw_name} power=#{power(:as_binary)} switch=#{
           inspect(Switch.position(sw_name))
-        ]
-        |> IO.iodata_to_binary()
-        |> Logger.info()
+        }
+        """
+        |> log()
       end)
 
     task
@@ -64,6 +61,12 @@ defmodule Irrigation do
   def init(opts \\ []) when is_list(opts) do
     switches = (opts ++ ["irrigation"]) |> List.flatten()
     for n <- switches, do: Switch.off(n)
+
+    schedule(:flower_boxes_am, ~e[0 7 * * *], &flower_boxes/1)
+    schedule(:flower_boxes_noon, ~e[0 12 * * *], &flower_boxes/1, seconds: 15)
+    schedule(:flower_boxes_pm, ~e[20 16 * * *], &flower_boxes/1, seconds: 15)
+
+    Keeper.put_key(:irrigate, "")
 
     :ok
   end
@@ -84,5 +87,29 @@ defmodule Irrigation do
       :as_binary ->
         inspect(Switch.position(sw))
     end
+  end
+
+  def schedule(name, crontab, func, opts \\ []) do
+    Helen.Scheduler.delete_job(name)
+
+    Helen.Scheduler.new_job()
+    |> Quantum.Job.set_name(name)
+    |> Quantum.Job.set_schedule(crontab)
+    |> Quantum.Job.set_task(fn -> func.(opts) end)
+    |> Helen.Scheduler.add_job()
+  end
+
+  def status do
+    log = Keeper.get_key(:irrigate)
+
+    IO.puts(log)
+  end
+
+  defp log(msg) do
+    log = Keeper.get_key(:irrigate)
+
+    new_log = Enum.join([log, msg], "")
+
+    Keeper.put_key(:irrigate, new_log)
   end
 end

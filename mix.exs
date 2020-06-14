@@ -6,7 +6,9 @@ defmodule Vera.MixProject do
       app: :vera,
       version: "0.0.7",
       elixir: "~> 1.10",
-      elixirc_options: [no_warn_undefined: [ExtraMod, Keeper, TimeSupport, Switch]],
+      elixirc_options: [
+        no_warn_undefined: [ExtraMod, Keeper, TimeSupport, Switch, Helen.Scheduler, Quantum.Job]
+      ],
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: releases(),
@@ -25,7 +27,8 @@ defmodule Vera.MixProject do
   defp deps do
     [
       {:timex, "~> 3.0"},
-      {:scribe, "~> 0.10"}
+      {:scribe, "~> 0.10"},
+      {:crontab, "~> 1.1"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
