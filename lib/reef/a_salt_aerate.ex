@@ -24,7 +24,7 @@ defmodule Reef.Salt.Aerate do
         rc = Switch.off(sw_name, wait_for_pid: pid, timeout_ms: 1500)
         {:aborted, subsystem, sw_name, rc}
       else
-        error -> error
+        error -> {:aborted, {:error, error}}
       end
     end
   end

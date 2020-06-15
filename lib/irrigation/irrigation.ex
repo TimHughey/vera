@@ -36,7 +36,7 @@ defmodule Irrigation do
 
         Process.sleep(ms)
 
-        Switch.toggle(sw_name)
+        Switch.off(sw_name)
 
         power(:off)
 
