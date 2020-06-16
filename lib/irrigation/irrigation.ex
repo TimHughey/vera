@@ -5,6 +5,17 @@ defmodule Irrigation do
   use Timex
   import Crontab.CronExpression
 
+  def all_off do
+    Switch.names_begin_with("irrigation") |> Switch.off()
+
+    """
+    ensuring all switches are off
+    """
+    |> log()
+
+    Process.sleep(3000)
+  end
+
   def flower_boxes(opts \\ [seconds: 45]) when is_list(opts) do
     irrigate("irrigation flower boxes", opts)
   end
@@ -24,6 +35,8 @@ defmodule Irrigation do
 
     task =
       Task.start(fn ->
+        all_off()
+
         power(:on)
         Process.sleep(5000)
 
@@ -43,8 +56,12 @@ defmodule Irrigation do
         # time for switch commands to be acked
         Process.sleep(3000)
 
+        all_off()
+
+        sw_pos = Switch.position(sw_name)
+
         """
-        finished #{sw_name} power=#{power(:as_binary)} switch=#{inspect(Switch.position(sw_name))}
+        finished #{sw_name} power=#{power(:as_binary)} switch=#{inspect(sw_pos)}
         """
         |> log()
       end)
@@ -54,7 +71,7 @@ defmodule Irrigation do
 
   def init(opts \\ []) when is_list(opts) do
     switches = (opts ++ ["irrigation"]) |> List.flatten()
-    for n <- switches, do: Switch.off(n)
+    for n <- switches, do: Switch.names_begin_with(n) |> Switch.off()
 
     schedule(:flower_boxes_am, ~e[0 7 * * *], &flower_boxes/1)
     schedule(:flower_boxes_noon, ~e[0 12 * * *], &flower_boxes/1, seconds: 15)
